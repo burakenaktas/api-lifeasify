@@ -19,17 +19,26 @@ app.use(cors());
 
 const jsonParser = bodyParser.json();
 
-app.get("/", (req, res) => {
-  res.send("Merhaba, dünya!");
-});
+app.get("/");
 
 app.get("/todays-chores", async (req, res) => {
-  const chores = await Chore.find({
+  const NOT_DONE_CHORES = await Chore.find({
+    status: "NOT_DONE",
     nextDue: {
+      $gte: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
+      $lte: dayjs().format("YYYY-MM-DD"),
+    },
+  });
+
+  const DONE_CHORES = await Chore.find({
+    status: "DONE",
+    lastDone: {
       $gte: dayjs().format("YYYY-MM-DD"),
       $lte: dayjs().format("YYYY-MM-DD"),
     },
   });
+
+  const chores = [...NOT_DONE_CHORES, ...DONE_CHORES];
 
   return res.status(201).send(chores);
 });
@@ -48,6 +57,60 @@ app.post("/add-chore", jsonParser, async (req, res) => {
   return res.status(201).send(savedChore);
 });
 
+app.put("/chores/:id", jsonParser, async (req, res) => {
+  const choreId = req.params.id;
+  const choreUpdates = req.body;
+
+  try {
+    const updatedChore = await Chore.findByIdAndUpdate(choreId, choreUpdates, {
+      new: true,
+    });
+
+    if (!updatedChore) {
+      return res.status(404).send("Chore not found");
+    }
+
+    return res.status(200).send(updatedChore);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error updating chore");
+  }
+});
+
+const updateChoreStatus = async (req, res) => {
+  const choreId = req.params.id;
+  const chore = await Chore.findById(choreId);
+
+  if (!chore) {
+    res.status(404).send("Chore not found");
+    return;
+  }
+
+  const updateChoreData = {
+    status: chore.status === "DONE" ? "NOT_DONE" : "DONE",
+    lastDone: chore.status === "DONE" ? "" : dayjs().format("YYYY-MM-DD"),
+    nextDue: calculateNextDueDate(chore),
+  };
+
+  try {
+    await Chore.updateOne({ _id: choreId }, updateChoreData);
+    res.status(200).send("Chore updated");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating chore");
+  }
+};
+
+const calculateNextDueDate = (chore) => {
+  if (chore.status === "DONE") {
+    return dayjs().format("YYYY-MM-DD");
+  }
+
+  return dayjs().add(chore.repeatFrequencyDays, "days").format("YYYY-MM-DD");
+};
+
+app.get("/complete-chore/:id", jsonParser, updateChoreStatus);
+
 app.listen(8000, () => {
-  console.log("Uygulama başlatıldı!");
+  console.log("Server is up!");
 });
