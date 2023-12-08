@@ -111,6 +111,18 @@ const calculateNextDueDate = (chore) => {
 
 app.get("/complete-chore/:id", jsonParser, updateChoreStatus);
 
+app.delete("/chores/:id", jsonParser, async (req, res) => {
+  const choreId = req.params.id;
+
+  try {
+    await Chore.deleteOne({ _id: choreId });
+    res.status(200).send("Chore deleted");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting chore");
+  }
+});
+
 app.listen(8000, () => {
   console.log("Server is up!");
 });
