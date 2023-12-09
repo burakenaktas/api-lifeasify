@@ -106,7 +106,9 @@ const calculateNextDueDate = (chore) => {
     return dayjs().format("YYYY-MM-DD");
   }
 
-  return dayjs().add(chore.repeatFrequencyDays, "days").format("YYYY-MM-DD");
+  return chore.isOneTime
+    ? undefined
+    : dayjs().add(chore.repeatFrequencyDays, "days").format("YYYY-MM-DD");
 };
 
 app.get("/complete-chore/:id", jsonParser, updateChoreStatus);

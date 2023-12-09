@@ -8,6 +8,7 @@ const choreSchema = new mongoose.Schema({
   status: String,
   lastDone: Date,
   nextDue: Date,
+  isOneTime: Boolean,
 });
 
 module.exports = mongoose.model("Chore", choreSchema);
