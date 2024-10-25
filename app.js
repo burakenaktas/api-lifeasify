@@ -43,6 +43,39 @@ app.get("/todays-chores", async (req, res) => {
   return res.status(201).send(chores);
 });
 
+app.get("/upcoming-chores", async (req, res) => {
+  const UPCOMING_CHORES = await Chore.find({
+    status: "NOT_DONE",
+    nextDue: {
+      $gte: dayjs().add(1, "days").format("YYYY-MM-DD"),
+      $lte: dayjs().add(7, "days").format("YYYY-MM-DD"),
+    },
+  });
+
+  const DONE_CHORES = await Chore.find({
+    status: "DONE",
+    nextDue: {
+      $gte: dayjs().add(1, "days").format("YYYY-MM-DD"),
+      $lte: dayjs().add(7, "days").format("YYYY-MM-DD"),
+    },
+  });
+
+  for (let i = 0; i < DONE_CHORES.length; i++) {
+    const chore = DONE_CHORES[i];
+    await Chore.updateOne(
+      { _id: chore._id },
+      { status: "NOT_DONE", lastDone: "" }
+    );
+
+    const upcomingChore = chore.toObject();
+    upcomingChore.status = "NOT_DONE";
+    upcomingChore.lastDone = "";
+    UPCOMING_CHORES.push(upcomingChore);
+  }
+
+  return res.status(201).send([...UPCOMING_CHORES]);
+});
+
 app.post("/add-chore", jsonParser, async (req, res) => {
   const chore = req.body;
   chore.status = "NOT_DONE";
